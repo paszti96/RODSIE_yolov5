@@ -78,7 +78,8 @@ def train(hyp):
 
     # Create model for classification
     yolo_model = Model(opt.cfg).to(device)
-    assert yolo_model.md['nc'] == nc, '%s nc=%g classes but %s nc=%g classes' % (opt.data, nc, opt.cfg, yolo_model.md['nc'])
+    assert yolo_model.md['nc'] == nc, '%s nc=%g classes but %s nc=%g classes' % (
+    opt.data, nc, opt.cfg, yolo_model.md['nc'])
 
     # Create mask for segmentation
     unet_model = UNet(n_channels=4, n_classes=4).float()
@@ -93,8 +94,9 @@ def train(hyp):
 
     # Segmentation loss and optimizer
     segmentation_criterion = BCEDiceLoss(eps=1.0, activation=None)
-    segmentation_optim = optim.Adam(unet_model.parameters(), lr = 0.005)
-    segmentation_scheduler = optim.lr_scheduler.ReduceLROnPlateau(segmentation_optim, factor=0.2,patience=2, cooldown=2)
+    segmentation_optim = optim.Adam(unet_model.parameters(), lr=0.005)
+    segmentation_scheduler = optim.lr_scheduler.ReduceLROnPlateau(segmentation_optim, factor=0.2, patience=2,
+                                                                  cooldown=2)
 
     # Optimizer
     nbs = 64  # nominal batch size
@@ -208,7 +210,7 @@ def train(hyp):
     c = torch.tensor(labels[:, 0])  # classes
     # cf = torch.bincount(c.long(), minlength=nc) + 1.
     # model._initialize_biases(cf.to(device))
-    #plot_labels(labels)
+    # plot_labels(labels)
     tb_writer.add_histogram('classes', c, 0)
 
     # Exponential moving average
@@ -223,7 +225,7 @@ def train(hyp):
     print('Image sizes %g train, %g test' % (imgsz, imgsz_test))
     print('Using %g dataloader workers' % nw)
     print('Starting training for %g epochs...' % epochs)
-    # torch.autograd.set_detect_anomaly(True)
+    torch.autograd.set_detect_anomaly(True)
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         yolo_model.train()
         unet_model.train()
@@ -238,7 +240,7 @@ def train(hyp):
         # seg_mloss = torch.zeros(4, device=device)
         print(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'GIoU', 'obj', 'cls', 'total', 'targets', 'img_size'))
         pbar = tqdm(enumerate(dataloader), total=nb)  # progress bar
-        for i, (imgs,masks, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
+        for i, (imgs, masks, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
             ni = i + nb * epoch  # number integrated batches (since train start)
             imgs = imgs.to(device).float() / 255.0  # uint8 to float32, 0 - 255 to 0.0 - 1.0
             masks = masks.to(device).float() / 255.0
@@ -269,7 +271,7 @@ def train(hyp):
 
             # Loss
             loss, loss_items = compute_loss(yolo_pred, targets.to(device), yolo_model)
-            segmentation_loss = segmentation_criterion(mask_pred,masks)
+            segmentation_loss = segmentation_criterion(mask_pred, masks)
 
             if not torch.isfinite(loss):
                 print('WARNING: non-finite loss, ending training ', loss_items)
@@ -287,7 +289,7 @@ def train(hyp):
             # Optimize
             if ni % accumulate == 0:
                 segmentation_optim.step()
-
+                segmentation_optim.zero_grad()
                 optimizer.step()
                 optimizer.zero_grad()
                 ema.update(yolo_model)
@@ -298,7 +300,7 @@ def train(hyp):
 
             # Print
             mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
-            #seg_mloss = (seg_mloss * i + segmentation_loss.item()) / (i + 1)  # update mean losses
+            # seg_mloss = (seg_mloss * i + segmentation_loss.item()) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_cached() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
             s = ('%10s' * 2 + '%10.4g' * 7) % (
                 '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1], segmentation_loss)
@@ -315,21 +317,25 @@ def train(hyp):
                         pass
                     # tb_writer.add_image('',imgs)  # add model to tensorboard
 
+            del imgs, masks, targets
             # end batch ------------------------------------------------------------------------------------------------
+
 
         # Scheduler
         scheduler.step()
-        segmentation_scheduler.step(metrics= segmentation_loss)
+        segmentation_scheduler.step(metrics=segmentation_loss)
 
         # mAP
         ema.update_attr(yolo_model)
         final_epoch = epoch + 1 == epochs
         if not opt.notest or final_epoch:  # Calculate mAP
+            print(batch_size)
             results, maps, times = test.test(opt.data,
                                              batch_size=batch_size,
                                              imgsz=imgsz_test,
                                              save_json=final_epoch and opt.data.endswith(os.sep + 'coco.yaml'),
-                                             model=ema.ema,
+                                             model_yolo=ema.ema,
+                                             unet_model = unet_model
                                              single_cls=opt.single_cls,
                                              dataloader=testloader,
                                              fast=ni < n_burn)
@@ -395,10 +401,10 @@ def train(hyp):
 
 if __name__ == '__main__':
     try:
-        os.makedirs(wdir)    
+        os.makedirs(wdir)
     except FileExistsError:
         pass
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--batch-size', type=int, default=16)
@@ -414,18 +420,18 @@ if __name__ == '__main__':
     parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
     parser.add_argument('--weights', type=str, default='', help='initial weights path')
     parser.add_argument('--name', default='', help='renames results.txt to results_name.txt if supplied')
-    parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--device', default='3', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--adam', action='store_true', help='use adam optimizer')
     parser.add_argument('--multi-scale', action='store_true', help='vary img-size +/- 50%')
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     opt = parser.parse_args()
     opt.weights = last if opt.resume else opt.weights
-    opt.cfg = glob.glob('./**/' + opt.cfg, recursive=True)[0]  # find file
-    opt.data = glob.glob('./**/' + opt.data, recursive=True)[0]  # find file
+    opt.cfg = glob.glob(opt.cfg, recursive=True)[0]  # find file
+    opt.data = glob.glob(opt.data, recursive=True)[0]  # find file
     print(opt)
     opt.img_size.extend([opt.img_size[-1]] * (2 - len(opt.img_size)))  # extend to 2 sizes (train, test)
     device = torch_utils.select_device(opt.device, apex=mixed_precision, batch_size=opt.batch_size)
-
+    # device = torch.device("cuda")
     if device.type == 'cpu':
         mixed_precision = False
 

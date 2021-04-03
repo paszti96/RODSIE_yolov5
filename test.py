@@ -17,12 +17,13 @@ def test(data,
          save_json=False,
          single_cls=False,
          augment=False,
-         model=None,
+         model_yolo=None,
+         seg_model = None,
          dataloader=None,
          fast=False,
          verbose=False):  # 0 fast, 1 accurate
     # Initialize/load model and set device
-    if model is None:
+    if model_yolo is None:
         device = torch_utils.select_device(opt.device, batch_size=batch_size)
 
         # Remove previous
@@ -31,17 +32,17 @@ def test(data,
 
         # Load model
         google_utils.attempt_download(weights)
-        model = torch.load(weights, map_location=device)['model']
-        torch_utils.model_info(model)
+        model_yolo = torch.load(weights, map_location=device)['model']
+        torch_utils.model_info(model_yolo)
         # model.fuse()
-        model.to(device)
+        model_yolo.to(device)
 
         if device.type != 'cpu' and torch.cuda.device_count() > 1:
-            model = nn.DataParallel(model)
+            model_yolo = nn.DataParallel(model_yolo)
 
         training = False
     else:  # called by train.py
-        device = next(model.parameters()).device  # get model device
+        device = next(model_yolo.parameters()).device  # get model device
         training = True
 
     # Configure run
@@ -51,7 +52,7 @@ def test(data,
     iouv = torch.linspace(0.5, 0.95, 10).to(device)  # iou vector for mAP@0.5:0.95
     # iouv = iouv[0].view(1)  # comment for mAP@0.5:0.95
     niou = iouv.numel()
-
+    print(batch_size)
     # Dataloader
     if dataloader is None:
         fast |= conf_thres > 0.001  # enable fast mode
@@ -71,9 +72,10 @@ def test(data,
                                 collate_fn=dataset.collate_fn)
 
     seen = 0
-    model.eval()
-    _ = model(torch.zeros((1, 3, imgsz, imgsz), device=device)) if device.type != 'cpu' else None  # run once
-    names = model.names if hasattr(model, 'names') else model.module.names
+    model_yolo.eval()
+    seg_model.eval()
+    #_ = model_yolo(torch.zeros((1, 3, imgsz, imgsz), device=device)) if device.type != 'cpu' else None  # run once
+    names = model_yolo.names if hasattr(model_yolo, 'names') else model_yolo.module.names
     coco91class = coco80_to_coco91_class()
     s = ('%20s' + '%12s' * 6) % ('Class', 'Images', 'Targets', 'P', 'R', 'mAP@.5', 'mAP@.5:.95')
     p, r, f1, mp, mr, map50, map, t0, t1 = 0., 0., 0., 0., 0., 0., 0., 0., 0.
@@ -90,12 +92,14 @@ def test(data,
         with torch.no_grad():
             # Run model
             t = torch_utils.time_synchronized()
-            inf_out, train_out = model(imgs, augment=augment)  # inference and training outputs
+            inf_out, train_out = model_yolo(imgs, augment=augment)  # inference and training outputs
+            seg_out = seg_model(imgs)
+            loss =
             t0 += torch_utils.time_synchronized() - t
 
             # Compute loss
             if training:  # if model has loss hyperparameters
-                loss += compute_loss(train_out, targets, model)[1][:3]  # GIoU, obj, cls
+                loss += compute_loss(train_out, targets, model_yolo)[1][:3]  # GIoU, obj, cls
 
             # Run NMS
             t = torch_utils.time_synchronized()
