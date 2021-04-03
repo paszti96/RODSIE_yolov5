@@ -208,7 +208,7 @@ def train(hyp):
     c = torch.tensor(labels[:, 0])  # classes
     # cf = torch.bincount(c.long(), minlength=nc) + 1.
     # model._initialize_biases(cf.to(device))
-    plot_labels(labels)
+    #plot_labels(labels)
     tb_writer.add_histogram('classes', c, 0)
 
     # Exponential moving average
@@ -227,7 +227,7 @@ def train(hyp):
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         yolo_model.train()
         unet_model.train()
-        train_loss = 0.0
+        segmentation_loss = 0.0
         # Update image weights (optional)
         if dataset.image_weights:
             w = yolo_model.class_weights.cpu().numpy() * (1 - maps) ** 2  # class weights
@@ -235,6 +235,7 @@ def train(hyp):
             dataset.indices = random.choices(range(dataset.n), weights=image_weights, k=dataset.n)  # rand weighted idx
 
         mloss = torch.zeros(4, device=device)  # mean losses
+        # seg_mloss = torch.zeros(4, device=device)
         print(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'GIoU', 'obj', 'cls', 'total', 'targets', 'img_size'))
         pbar = tqdm(enumerate(dataloader), total=nb)  # progress bar
         for i, (imgs,masks, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
@@ -292,14 +293,15 @@ def train(hyp):
                 ema.update(yolo_model)
 
             # calculate average losses for segmentation pred
-            train_loss += segmentation_loss.item() * imgs.size(0)
-            pbar.set_postfix(ordered_dict={"train_loss": segmentation_loss.item()})
+            segmentation_loss += segmentation_loss.item() * imgs.size(0)
+            pbar.set_postfix(ordered_dict={"segmentation loss": segmentation_loss.item()})
 
             # Print
             mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
+            #seg_mloss = (seg_mloss * i + segmentation_loss.item()) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_cached() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
-            s = ('%10s' * 2 + '%10.4g' * 6) % (
-                '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1])
+            s = ('%10s' * 2 + '%10.4g' * 7) % (
+                '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1], segmentation_loss)
             pbar.set_description(s)
 
             # Plot
@@ -311,12 +313,13 @@ def train(hyp):
                         tb_writer.add_image(f, res, dataformats='HWC', global_step=epoch)
                     except:
                         pass
-                    # tb_writer.add_graph(model, imgs)  # add model to tensorboard
+                    # tb_writer.add_image('',imgs)  # add model to tensorboard
 
             # end batch ------------------------------------------------------------------------------------------------
 
         # Scheduler
         scheduler.step()
+        segmentation_scheduler.step(metrics= segmentation_loss)
 
         # mAP
         ema.update_attr(yolo_model)
@@ -344,6 +347,7 @@ def train(hyp):
                     'val/giou_loss', 'val/obj_loss', 'val/cls_loss']
             for x, tag in zip(list(mloss[:-1]) + list(results), tags):
                 tb_writer.add_scalar(tag, x, epoch)
+            tb_writer.add_scalar('segmentation/mean_loss', segmentation_loss, epoch)
 
         # Update best mAP
         fi = fitness(np.array(results).reshape(1, -1))  # fitness_i = weighted combination of [P, R, mAP, F1]
@@ -361,6 +365,7 @@ def train(hyp):
                         'optimizer': None if final_epoch else optimizer.state_dict()}
 
             # Save last, best and delete
+            torch.save(unet_model.state_dict(), 'unet.pt')
             torch.save(ckpt, last)
             if (best_fitness == fi) and not final_epoch:
                 torch.save(ckpt, best)
