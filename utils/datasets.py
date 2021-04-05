@@ -450,7 +450,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
             # Letterbox
             shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
-            img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
+            img,mask, ratio, pad = letterbox(img,mask, shape, auto=False, scaleup=self.augment)
             shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
 
             # Load labels
@@ -625,7 +625,7 @@ def load_mosaic(self, index):
     return img4,mask4, labels4
 
 
-def letterbox(img, new_shape=(416, 416), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True):
+def letterbox(img,mask, new_shape=(416, 416), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True):
     # Resize image to a 32-pixel-multiple rectangle https://github.com/ultralytics/yolov3/issues/232
     shape = img.shape[:2]  # current shape [height, width]
     if isinstance(new_shape, int):
@@ -652,10 +652,12 @@ def letterbox(img, new_shape=(416, 416), color=(114, 114, 114), auto=True, scale
 
     if shape[::-1] != new_unpad:  # resize
         img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
+        mask = cv2.resize(mask, new_unpad, interpolation=cv2.INTER_LINEAR)
     top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
     left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
-    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
-    return img, ratio, (dw, dh)
+    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border,
+    mask = cv2.copyMakeBorder(mask, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+    return img,mask, ratio, (dw, dh)
 
 
 def random_affine(img,mask, targets=(), degrees=10, translate=.1, scale=.1, shear=10, border=0):

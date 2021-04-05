@@ -92,8 +92,6 @@ def train(hyp):
         print('WARNING: --img-size %g,%g must be multiple of %s max stride %g' % (*opt.img_size, opt.cfg, gs))
     imgsz, imgsz_test = [make_divisible(x, gs) for x in opt.img_size]  # image sizes (train, test)
 
-    # Segmentation loss and optimizer
-    segmentation_criterion = BCEDiceLoss(eps=1.0, activation=None)
     segmentation_optim = optim.Adam(unet_model.parameters(), lr=0.005)
     segmentation_scheduler = optim.lr_scheduler.ReduceLROnPlateau(segmentation_optim, factor=0.2, patience=2,
                                                                   cooldown=2)
@@ -221,7 +219,7 @@ def train(hyp):
     nb = len(dataloader)  # number of batches
     n_burn = max(3 * nb, 1e3)  # burn-in iterations, max(3 epochs, 1k iterations)
     maps = np.zeros(nc)  # mAP per class
-    results = (0, 0, 0, 0, 0, 0, 0)  # 'P', 'R', 'mAP', 'F1', 'val GIoU', 'val Objectness', 'val Classification'
+    results = (0, 0, 0, 0, 0, 0, 0,0,0)  # 'P', 'R', 'mAP', 'F1', 'val GIoU', 'val Objectness', 'val Classification' 'seg_valid_loss' 'dice_cof'
     print('Image sizes %g train, %g test' % (imgsz, imgsz_test))
     print('Using %g dataloader workers' % nw)
     print('Starting training for %g epochs...' % epochs)
@@ -230,6 +228,8 @@ def train(hyp):
         yolo_model.train()
         unet_model.train()
         segmentation_loss = 0.0
+        segmentation_valid_loss = 0.0
+        dice_score = 0.0
         # Update image weights (optional)
         if dataset.image_weights:
             w = yolo_model.class_weights.cpu().numpy() * (1 - maps) ** 2  # class weights
@@ -329,20 +329,19 @@ def train(hyp):
         ema.update_attr(yolo_model)
         final_epoch = epoch + 1 == epochs
         if not opt.notest or final_epoch:  # Calculate mAP
-            print(batch_size)
             results, maps, times = test.test(opt.data,
                                              batch_size=batch_size,
                                              imgsz=imgsz_test,
                                              save_json=final_epoch and opt.data.endswith(os.sep + 'coco.yaml'),
                                              model_yolo=ema.ema,
-                                             unet_model = unet_model
+                                             seg_model = unet_model,
                                              single_cls=opt.single_cls,
                                              dataloader=testloader,
                                              fast=ni < n_burn)
 
         # Write
         with open(results_file, 'a') as f:
-            f.write(s + '%10.4g' * 7 % results + '\n')  # P, R, mAP, F1, test_losses=(GIoU, obj, cls)
+            f.write(s + '%10.4g' * 9 % results + '\n')  # P, R, mAP, F1, test_losses=(GIoU, obj, cls)
         if len(opt.name) and opt.bucket:
             os.system('gsutil cp results.txt gs://%s/results/results%s.txt' % (opt.bucket, opt.name))
 
@@ -350,10 +349,10 @@ def train(hyp):
         if tb_writer:
             tags = ['train/giou_loss', 'train/obj_loss', 'train/cls_loss',
                     'metrics/precision', 'metrics/recall', 'metrics/mAP_0.5', 'metrics/F1',
-                    'val/giou_loss', 'val/obj_loss', 'val/cls_loss']
+                    'val/giou_loss', 'val/obj_loss', 'val/cls_loss','segmentation/val_loss', 'segmentation/dice_score']
             for x, tag in zip(list(mloss[:-1]) + list(results), tags):
                 tb_writer.add_scalar(tag, x, epoch)
-            tb_writer.add_scalar('segmentation/mean_loss', segmentation_loss, epoch)
+            tb_writer.add_scalar('segmentation/train_mean_loss', segmentation_loss, epoch)
 
         # Update best mAP
         fi = fitness(np.array(results).reshape(1, -1))  # fitness_i = weighted combination of [P, R, mAP, F1]

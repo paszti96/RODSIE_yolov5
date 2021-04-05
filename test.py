@@ -52,7 +52,7 @@ def test(data,
     iouv = torch.linspace(0.5, 0.95, 10).to(device)  # iou vector for mAP@0.5:0.95
     # iouv = iouv[0].view(1)  # comment for mAP@0.5:0.95
     niou = iouv.numel()
-    print(batch_size)
+
     # Dataloader
     if dataloader is None:
         fast |= conf_thres > 0.001  # enable fast mode
@@ -79,6 +79,7 @@ def test(data,
     coco91class = coco80_to_coco91_class()
     s = ('%20s' + '%12s' * 6) % ('Class', 'Images', 'Targets', 'P', 'R', 'mAP@.5', 'mAP@.5:.95')
     p, r, f1, mp, mr, map50, map, t0, t1 = 0., 0., 0., 0., 0., 0., 0., 0., 0.
+    seg_valid, dice_score = 0.0, 0.0
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
     for batch_i, (imgs,masks, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
@@ -87,20 +88,22 @@ def test(data,
         targets = targets.to(device)
         nb, _, height, width = imgs.shape  # batch size, channels, height, width
         whwh = torch.Tensor([width, height, width, height]).to(device)
-
+        masks = masks.permute(0, 3, 1, 2)
         # Disable gradients
         with torch.no_grad():
             # Run model
             t = torch_utils.time_synchronized()
             inf_out, train_out = model_yolo(imgs, augment=augment)  # inference and training outputs
             seg_out = seg_model(imgs)
-            loss =
             t0 += torch_utils.time_synchronized() - t
 
             # Compute loss
             if training:  # if model has loss hyperparameters
                 loss += compute_loss(train_out, targets, model_yolo)[1][:3]  # GIoU, obj, cls
-
+                seg_loss = segmentation_criterion(seg_out,masks)
+                seg_valid = seg_loss.item() * imgs.size(0)
+                dice_cof = DiceLoss.dice_no_threshold(seg_out.cpu(), masks.cpu()).item()
+                dice_score = dice_cof*imgs.size(0)
             # Run NMS
             t = torch_utils.time_synchronized()
             output = non_max_suppression(inf_out, conf_thres=conf_thres, iou_thres=iou_thres, fast=fast)
@@ -232,7 +235,7 @@ def test(data,
     maps = np.zeros(nc) + map
     for i, c in enumerate(ap_class):
         maps[c] = ap[i]
-    return (mp, mr, map50, map, *(loss.cpu() / len(dataloader)).tolist()), maps, t
+    return (mp, mr, map50, map, *(loss.cpu() / len(dataloader)).tolist(), seg_valid, dice_score), maps, t
 
 
 if __name__ == '__main__':

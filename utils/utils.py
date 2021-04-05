@@ -491,6 +491,7 @@ class DiceLoss(nn.Module):
 
         if threshold is not None:
             pr = (pr > threshold).float()
+        print(gt.shape, pr.shape)
 
         tp = torch.sum(gt*pr)
         fp = torch.sum(pr) - tp
@@ -1187,9 +1188,14 @@ def plot_results(start=0, stop=0, bucket='', id=(), labels=()):  # from utils.ut
                 ax[i].set_title(s[i])
                 # if i in [5, 6, 7]:  # share train and val loss y axes
                 #     ax[i].get_shared_y_axes().join(ax[i], ax[i - 5])
+                #     ax[i].get_shared_y_axes().join(ax[i], ax[i - 5])
         except:
             print('Warning: Plotting error for %s, skipping file' % f)
 
     fig.tight_layout()
     ax[1].legend()
     fig.savefig('results.png', dpi=200)
+
+
+# Segmentation loss and optimizer
+segmentation_criterion = BCEDiceLoss(eps=1.0, activation=None)
