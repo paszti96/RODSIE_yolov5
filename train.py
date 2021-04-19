@@ -82,7 +82,7 @@ def train(hyp):
     opt.data, nc, opt.cfg, yolo_model.md['nc'])
 
     # Create mask for segmentation
-    unet_model = UNet(n_channels=4, n_classes=4).float()
+    unet_model = UNet(n_channels=4, n_classes=1).float()
     if torch.cuda.is_available():
         unet_model.cuda()
 

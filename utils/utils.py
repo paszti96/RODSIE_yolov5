@@ -535,8 +535,8 @@ class BCEDiceLoss(DiceLoss):
         self.lambda_bce = lambda_bce
 
     def forward(self, y_pr, y_gt):
-        dice = super().forward(y_pr, y_gt)
-        bce = self.bce(y_pr, y_gt)
+        dice = super().forward(y_pr, y_gt[:,0,:,:,])
+        bce = self.bce(y_pr, y_gt[:,0,:,:,])
         return (self.lambda_dice * dice) + (self.lambda_bce * bce)
 
 def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, fast=False, classes=None, agnostic=False):

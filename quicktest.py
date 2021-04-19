@@ -15,11 +15,11 @@ def drawBBs(BBs, img):
     # img = cv2.resize(img, (1263, 947))
     for BB in BBs:
         BB = BB.split(" ")
-        print(BB)
-        x = int(float(BB[1]) * img.shape[0])
-        y = int(float(BB[2]) * img.shape[1])
-        w = int(float(BB[3]) * img.shape[0])
-        h = int(float(BB[4]) * img.shape[1])
+        print(img.shape[1],img.shape[0])
+        x = int(float(BB[1]) * img.shape[1])
+        y = int(float(BB[2]) * img.shape[0])
+        w = int(float(BB[3]) * img.shape[1])
+        h = int(float(BB[4]) * img.shape[0])
         print(BB[0], x, y, w, h)
         # c = BB[4]
 
@@ -50,18 +50,18 @@ import matplotlib.pyplot as plt
 # inline
 
 # Read images
-img = cv2.imread("./rgb_183.png")
+img = cv2.imread("./rgb_41.png")
 # depth = cv2.imread("HW/g1/depth/1.png", -1)
 
 # Read annotations
-file = open('./rgb_183.txt', 'r')
+file = open('./rgb_41.txt', 'r')
 annotations = file.readlines()
 print(annotations)
 
 # Visualization
 # depth = depth / 5000.0
 img = drawBBs(annotations, img)
-img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+img_rgb = img #cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 # Figure with subplots
 # plt.figure(figsize=(30, 30))
