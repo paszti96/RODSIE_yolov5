@@ -1,1 +1,0 @@
-RODSIE_yolov5/data/1/rgb_10.png
