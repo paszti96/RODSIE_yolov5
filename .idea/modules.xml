@@ -3,8 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../Tartarus/Data/.idea/Data.iml" filepath="$PROJECT_DIR$/../Tartarus/Data/.idea/Data.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../PyTorch_YOLOv4/.idea/PyTorch_YOLOv4.iml" filepath="$PROJECT_DIR$/../PyTorch_YOLOv4/.idea/PyTorch_YOLOv4.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../awesome-semantic-segmentation-pytorch/.idea/awesome-semantic-segmentation-pytorch.iml" filepath="$PROJECT_DIR$/../awesome-semantic-segmentation-pytorch/.idea/awesome-semantic-segmentation-pytorch.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/yolov5.iml" filepath="$PROJECT_DIR$/.idea/yolov5.iml" />
     </modules>
   </component>

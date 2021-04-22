@@ -21,7 +21,7 @@ except:
     print('Apex recommended for faster mixed precision training: https://github.com/NVIDIA/apex')
     mixed_precision = False  # not installed
 
-wdir = 'weights' + os.sep  # weights dir
+wdir = 'gdrive' + os.sep + 'weights' + os.sep    # weights dir
 last = wdir + 'last.pt'
 best = wdir + 'best.pt'
 results_file = 'results.txt'
@@ -370,10 +370,10 @@ def train(hyp):
                         'optimizer': None if final_epoch else optimizer.state_dict()}
 
             # Save last, best and delete
-            torch.save(unet_model.state_dict(), 'unet.pt')
+            torch.save(unet_model.state_dict(), wdir + f'unet{epoch}.pt')
             torch.save(ckpt, last)
             if (best_fitness == fi) and not final_epoch:
-                torch.save(ckpt, best)
+                torch.save(ckpt, wdir + f'best{epoch}.pt')
             del ckpt
 
         # end epoch ----------------------------------------------------------------------------------------------------
@@ -436,7 +436,7 @@ if __name__ == '__main__':
 
     # Train
     if not opt.evolve:
-        tb_writer = SummaryWriter(comment=opt.name)
+        tb_writer = SummaryWriter(comment=opt.name, log_dir= wdir)
         print('Start Tensorboard with "tensorboard --logdir=runs", view at http://localhost:6006/')
         train(hyp)
 

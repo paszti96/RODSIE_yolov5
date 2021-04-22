@@ -16,9 +16,9 @@ def detect(save_img=False):
     os.makedirs(out)  # make new output folder
 
     # Load model
-    google_utils.attempt_download(weights)
+    # google_utils.attempt_download(weights)
     yolo_model = torch.load(weights, map_location=device)['model']
-    segmentation_model = UNet(n_channels = 4, n_classes = 4).float()
+    segmentation_model = UNet(n_channels = 4, n_classes = 1).float()
     segmentation_model.load_state_dict(torch.load(segmentation_weights, map_location=device))
     # torch.save(torch.load(weights, map_location=device), weights)  # update model if SourceChangeWarning
     # model.fuse()
