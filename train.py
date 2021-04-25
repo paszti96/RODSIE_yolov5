@@ -62,7 +62,7 @@ if hyp['fl_gamma']:
 def train(hyp):
     epochs = opt.epochs  # 300
     batch_size = opt.batch_size  # 64
-    weights = opt.weights  # initial training weights
+    weights, segmentation_weights = opt.weights, opt.segmentation_weights # initial training weights
 
     # Configure
     init_seeds(1)
@@ -83,6 +83,9 @@ def train(hyp):
 
     # Create mask for segmentation
     unet_model = UNet(n_channels=4, n_classes=1).float()
+    if segmentation_weights:
+        unet_model.load_state_dict(torch.load(segmentation_weights, map_location=device))
+
     if torch.cuda.is_available():
         unet_model.cuda()
 
@@ -417,7 +420,8 @@ if __name__ == '__main__':
     parser.add_argument('--evolve', action='store_true', help='evolve hyperparameters')
     parser.add_argument('--bucket', type=str, default='', help='gsutil bucket')
     parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
-    parser.add_argument('--weights', type=str, default='', help='initial weights path')
+    parser.add_argument('--weights', type=str, default='best.pt', help='initial weights path')
+    parser.add_argument('--segmentation_weights', type=str, default='unet.pt', help='initial weights path')
     parser.add_argument('--name', default='', help='renames results.txt to results_name.txt if supplied')
     parser.add_argument('--device', default='3', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--adam', action='store_true', help='use adam optimizer')
