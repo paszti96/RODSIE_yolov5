@@ -18,7 +18,7 @@ def test(data,
          single_cls=False,
          augment=False,
          model_yolo=None,
-         seg_model = None,
+         # seg_model = None,
          dataloader=None,
          fast=False,
          verbose=False):  # 0 fast, 1 accurate
@@ -73,7 +73,7 @@ def test(data,
 
     seen = 0
     model_yolo.eval()
-    seg_model.eval()
+    # seg_model.eval()
     #_ = model_yolo(torch.zeros((1, 3, imgsz, imgsz), device=device)) if device.type != 'cpu' else None  # run once
     names = model_yolo.names if hasattr(model_yolo, 'names') else model_yolo.module.names
     coco91class = coco80_to_coco91_class()
@@ -93,8 +93,9 @@ def test(data,
         with torch.no_grad():
             # Run model
             t = torch_utils.time_synchronized()
-            inf_out, train_out = model_yolo(imgs, augment=augment)  # inference and training outputs
-            seg_out = seg_model(imgs)
+            inf_out, seg_out = model_yolo(imgs, augment=augment)  # inference and training outputs
+            train_out = inf_out[1]
+            # seg_out = model_yolo(imgs)
             t0 += torch_utils.time_synchronized() - t
 
             # Compute loss
@@ -106,7 +107,7 @@ def test(data,
                 dice_score = dice_cof*imgs.size(0)
             # Run NMS
             t = torch_utils.time_synchronized()
-            output = non_max_suppression(inf_out, conf_thres=conf_thres, iou_thres=iou_thres, fast=fast)
+            output = non_max_suppression(inf_out[0], conf_thres=conf_thres, iou_thres=iou_thres, fast=fast)
             t1 += torch_utils.time_synchronized() - t
 
         # Statistics per image

@@ -10,7 +10,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 import test  # import test.py to get mAP after each epoch
 from models.yolo import Model
-from models.segmentation import UNet
 from utils.datasets import *
 from utils.utils import *
 
@@ -21,7 +20,7 @@ except:
     print('Apex recommended for faster mixed precision training: https://github.com/NVIDIA/apex')
     mixed_precision = False  # not installed
 
-wdir = 'gdrive' + os.sep + 'weights' + os.sep    # weights dir
+wdir = 'weights' + os.sep    # weights dir
 last = wdir + 'last.pt'
 best = wdir + 'best.pt'
 results_file = 'results.txt'
@@ -82,12 +81,12 @@ def train(hyp):
     opt.data, nc, opt.cfg, yolo_model.md['nc'])
 
     # Create mask for segmentation
-    unet_model = UNet(n_channels=4, n_classes=1).float()
-    if segmentation_weights:
-        unet_model.load_state_dict(torch.load(segmentation_weights, map_location=device))
+    # unet_model = UNet(n_channels=4, n_classes=1).float()
+    # if segmentation_weights:
+        # unet_model.load_state_dict(torch.load(segmentation_weights, map_location=device))
 
-    if torch.cuda.is_available():
-        unet_model.cuda()
+    # if torch.cuda.is_available():
+        # unet_model.cuda()
 
     # Image sizes
     gs = int(max(yolo_model.stride))  # grid size (max stride)
@@ -95,9 +94,9 @@ def train(hyp):
         print('WARNING: --img-size %g,%g must be multiple of %s max stride %g' % (*opt.img_size, opt.cfg, gs))
     imgsz, imgsz_test = [make_divisible(x, gs) for x in opt.img_size]  # image sizes (train, test)
 
-    segmentation_optim = optim.Adam(unet_model.parameters(), lr=0.005)
-    segmentation_scheduler = optim.lr_scheduler.ReduceLROnPlateau(segmentation_optim, factor=0.2, patience=2,
-                                                                  cooldown=2)
+    # segmentation_optim = optim.Adam(unet_model.parameters(), lr=0.005)
+    # segmentation_scheduler = optim.lr_scheduler.ReduceLROnPlateau(segmentation_optim, factor=0.2, patience=2,
+    #                                                               cooldown=2)
 
     # Optimizer
     nbs = 64  # nominal batch size
@@ -229,7 +228,7 @@ def train(hyp):
     torch.autograd.set_detect_anomaly(True)
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         yolo_model.train()
-        unet_model.train()
+       # unet_model.train()
         segmentation_loss = 0.0
         segmentation_valid_loss = 0.0
         dice_score = 0.0
@@ -267,21 +266,21 @@ def train(hyp):
                     imgs = F.interpolate(imgs, size=ns, mode='bilinear', align_corners=False)
 
             # Forward
-            yolo_pred = yolo_model(imgs)
+            yolo_pred, mask_pred = yolo_model(imgs)
             masks = masks.permute(0, 3, 1, 2)
 
-            mask_pred = unet_model(imgs)
+            # mask_pred = unet_model(imgs)
 
             # Loss
             loss, loss_items = compute_loss(yolo_pred, targets.to(device), yolo_model)
-            segmentation_loss = segmentation_criterion(mask_pred, masks)
+            #segmentation_loss = segmentation_criterion(mask_pred, masks)
 
             if not torch.isfinite(loss):
                 print('WARNING: non-finite loss, ending training ', loss_items)
                 return results
 
             # Backward
-            segmentation_loss.backward()
+         #   segmentation_loss.backward()
 
             if mixed_precision:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
@@ -291,22 +290,22 @@ def train(hyp):
 
             # Optimize
             if ni % accumulate == 0:
-                segmentation_optim.step()
-                segmentation_optim.zero_grad()
+                # segmentation_optim.step()
+                # segmentation_optim.zero_grad()
                 optimizer.step()
                 optimizer.zero_grad()
                 ema.update(yolo_model)
 
             # calculate average losses for segmentation pred
-            segmentation_loss += segmentation_loss.item() * imgs.size(0)
-            pbar.set_postfix(ordered_dict={"segmentation loss": segmentation_loss.item()})
+            # segmentation_loss += segmentation_loss.item() * imgs.size(0)
+            # pbar.set_postfix(ordered_dict={"segmentation loss": segmentation_loss.item()})
 
             # Print
             mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
             # seg_mloss = (seg_mloss * i + segmentation_loss.item()) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_cached() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
-            s = ('%10s' * 2 + '%10.4g' * 7) % (
-                '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1], segmentation_loss)
+            s = ('%10s' * 2 + '%10.4g' * 6) % (
+                '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1])
             pbar.set_description(s)
 
             # Plot
@@ -326,7 +325,7 @@ def train(hyp):
 
         # Scheduler
         scheduler.step()
-        segmentation_scheduler.step(metrics=segmentation_loss)
+        # segmentation_scheduler.step(metrics=segmentation_loss)
 
         # mAP
         ema.update_attr(yolo_model)
@@ -337,7 +336,7 @@ def train(hyp):
                                              imgsz=imgsz_test,
                                              save_json=final_epoch and opt.data.endswith(os.sep + 'coco.yaml'),
                                              model_yolo=ema.ema,
-                                             seg_model = unet_model,
+                                             # seg_model = unet_model,
                                              single_cls=opt.single_cls,
                                              dataloader=testloader,
                                              fast=ni < n_burn)
@@ -373,8 +372,8 @@ def train(hyp):
                         'optimizer': None if final_epoch else optimizer.state_dict()}
 
             # Save last, best and delete
-            torch.save(unet_model.state_dict(), wdir + f'unet{epoch}.pt')
-            torch.save(ckpt, last)
+            # torch.save(unet_model.state_dict(), wdir + f'unet{epoch}.pt')
+            torch.save(ckpt, wdir + f'best{epoch}.pt')
             if (best_fitness == fi) and not final_epoch:
                 torch.save(ckpt, wdir + f'best{epoch}.pt')
             del ckpt
@@ -420,8 +419,8 @@ if __name__ == '__main__':
     parser.add_argument('--evolve', action='store_true', help='evolve hyperparameters')
     parser.add_argument('--bucket', type=str, default='', help='gsutil bucket')
     parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
-    parser.add_argument('--weights', type=str, default='best.pt', help='initial weights path')
-    parser.add_argument('--segmentation_weights', type=str, default='unet.pt', help='initial weights path')
+    parser.add_argument('--weights', type=str, default='', help='initial weights path')
+    parser.add_argument('--segmentation_weights', type=str, default='', help='initial weights path')
     parser.add_argument('--name', default='', help='renames results.txt to results_name.txt if supplied')
     parser.add_argument('--device', default='3', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--adam', action='store_true', help='use adam optimizer')

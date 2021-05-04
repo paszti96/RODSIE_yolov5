@@ -4,7 +4,7 @@ import yaml
 
 from models.experimental import *
 
-
+detect = -12
 class Detect(nn.Module):
     def __init__(self, nc=80, anchors=()):  # detection layer
         super(Detect, self).__init__()
@@ -60,8 +60,8 @@ class Model(nn.Module):
         # print([x.shape for x in self.forward(torch.zeros(1, ch, 64, 64))])
 
         # Build strides, anchors
-        m = self.model[-1]  # Detect()
-        m.stride = torch.tensor([64 / x.shape[-2] for x in self.forward(torch.zeros(1, ch, 64, 64))])  # forward
+        m = self.model[detect]  # Detect()
+        m.stride = torch.tensor([64 / x.shape[-2] for x in self.forward(torch.zeros(1, ch, 64, 64))[0]])  # forward
         m.anchors /= m.stride.view(-1, 1, 1)
         self.stride = m.stride
 
@@ -107,14 +107,16 @@ class Model(nn.Module):
 
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
+            if m._get_name() == 'Detect':
+                yolo = x
 
         if profile:
             print('%.1fms total' % sum(dt))
-        return x
+        return yolo, torch.sigmoid(x)
 
     def _initialize_biases(self, cf=None):  # initialize biases into Detect(), cf is class frequency
         # cf = torch.bincount(torch.tensor(np.concatenate(dataset.labels, 0)[:, 0]).long(), minlength=nc) + 1.
-        m = self.model[-1]  # Detect() module
+        m = self.model[detect]  # Detect() module
         for f, s in zip(m.f, m.stride):  #  from
             mi = self.model[f % m.i]
             b = mi.bias.view(m.na, -1)  # conv.bias(255) to (3,85)
@@ -125,7 +127,7 @@ class Model(nn.Module):
             mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
 
     def _print_biases(self):
-        m = self.model[-1]  # Detect() module
+        m = self.model[detect]  # Detect() module
         for f in sorted([x % m.i for x in m.f]):  #  from
             b = self.model[f].bias.detach().view(m.na, -1).T  # conv.bias(255) to (3,85)
             print(('%g Conv2d.bias:' + '%10.3g' * 6) % (f, *b[:5].mean(1).tolist(), b[5:].mean()))

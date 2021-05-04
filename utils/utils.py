@@ -408,8 +408,8 @@ def compute_loss(p, targets, model):  # predictions, targets, model
 
 def build_targets(p, targets, model):
     # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
-    det = model.module.model[-1] if type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel) \
-        else model.model[-1]  # Detect() module
+    det = model.module.model[-12] if type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel) \
+        else model.model[-12]  # Detect() module
     na, nt = det.na, targets.shape[0]  # number of anchors, targets
     tcls, tbox, indices, anch = [], [], [], []
     gain = torch.ones(6, device=targets.device)  # normalized to gridspace gain
@@ -487,7 +487,7 @@ class DiceLoss(nn.Module):
         else:
             raise NotImplementedError("Activation implemented for sigmoid and softmax2d")
 
-        pr = activation_fn(pr)
+        pr = activation_fn(pr)[:,0,:,:,]
 
         if threshold is not None:
             pr = (pr > threshold).float()
@@ -515,10 +515,10 @@ class DiceLoss(nn.Module):
         https://catalyst-team.github.io/catalyst/_modules/catalyst/dl/utils/criterion/dice.html
         """
         if threshold is not None:
-            outputs = (outputs > threshold).float()
+            outputs = (outputs > threshold).float()[:,0,:,:,]
 
-        intersection = torch.sum(targets * outputs)
-        union = torch.sum(targets) + torch.sum(outputs)
+        intersection = torch.sum(targets[:,0,:,:,] * outputs[:,0,:,:,])
+        union = torch.sum(targets[:,0,:,:,]) + torch.sum(outputs[:,0,:,:,])
         dice = 2 * intersection / (union + eps)
 
         return dice
@@ -536,7 +536,7 @@ class BCEDiceLoss(DiceLoss):
 
     def forward(self, y_pr, y_gt):
         dice = super().forward(y_pr, y_gt[:,0,:,:,])
-        bce = self.bce(y_pr, y_gt[:,0,:,:,])
+        bce = self.bce(y_pr[:,0,:,:,], y_gt[:,0,:,:,])
         return (self.lambda_dice * dice) + (self.lambda_bce * bce)
 
 def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, fast=False, classes=None, agnostic=False):
