@@ -20,7 +20,7 @@ except:
     print('Apex recommended for faster mixed precision training: https://github.com/NVIDIA/apex')
     mixed_precision = False  # not installed
 
-wdir = 'weights' + os.sep    # weights dir
+wdir = '/mydrive/weights' + os.sep    # weights dir
 last = wdir + 'last.pt'
 best = wdir + 'best.pt'
 results_file = 'results.txt'
@@ -373,9 +373,9 @@ def train(hyp):
 
             # Save last, best and delete
             # torch.save(unet_model.state_dict(), wdir + f'unet{epoch}.pt')
-            torch.save(ckpt, wdir + f'best{epoch}.pt')
+            torch.save(unet_model.state_dict(), wdir + f'whole_last{epoch}.pt')
             if (best_fitness == fi) and not final_epoch:
-                torch.save(ckpt, wdir + f'best{epoch}.pt')
+                torch.save(ckpt, wdir + f'm_best{epoch}.pt')
             del ckpt
 
         # end epoch ----------------------------------------------------------------------------------------------------
