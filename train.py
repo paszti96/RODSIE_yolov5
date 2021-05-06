@@ -276,18 +276,20 @@ def train(hyp):
             loss, loss_items = compute_loss(yolo_pred, targets.to(device), yolo_model)
             segmentation_loss = segmentation_criterion(mask_pred, masks)
 
+            # loss += segmentation_loss
             if not torch.isfinite(loss):
                 print('WARNING: non-finite loss, ending training ', loss_items)
                 return results
 
             # Backward
-            #segmentation_loss.backward()
+            # segmentation_loss.backward()
 
             if mixed_precision:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
-                loss.backward()
+                loss.backward(retain_graph = True)
+                segmentation_loss.backward()
 
             # Optimize
             if ni % accumulate == 0:

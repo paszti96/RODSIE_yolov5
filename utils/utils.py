@@ -1198,4 +1198,4 @@ def plot_results(start=0, stop=0, bucket='', id=(), labels=()):  # from utils.ut
 
 
 # Segmentation loss and optimizer
-segmentation_criterion = BCEDiceLoss(eps=1.0, activation=None)
+segmentation_criterion = nn.BCELoss()
