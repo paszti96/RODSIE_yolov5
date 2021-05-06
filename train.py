@@ -239,7 +239,7 @@ def train(hyp):
             dataset.indices = random.choices(range(dataset.n), weights=image_weights, k=dataset.n)  # rand weighted idx
 
         mloss = torch.zeros(4, device=device)  # mean losses
-        # seg_mloss = torch.zeros(4, device=device)
+        seg_mloss = torch.zeros(4, device=device)
         print(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'GIoU', 'obj', 'cls', 'total', 'targets', 'img_size'))
         pbar = tqdm(enumerate(dataloader), total=nb)  # progress bar
         for i, (imgs, masks, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
@@ -267,20 +267,21 @@ def train(hyp):
 
             # Forward
             yolo_pred, mask_pred = yolo_model(imgs)
+            print(mask_pred.shape)
             masks = masks.permute(0, 3, 1, 2)
 
             # mask_pred = unet_model(imgs)
 
             # Loss
             loss, loss_items = compute_loss(yolo_pred, targets.to(device), yolo_model)
-            #segmentation_loss = segmentation_criterion(mask_pred, masks)
+            segmentation_loss = segmentation_criterion(mask_pred, masks)
 
             if not torch.isfinite(loss):
                 print('WARNING: non-finite loss, ending training ', loss_items)
                 return results
 
             # Backward
-         #   segmentation_loss.backward()
+            #segmentation_loss.backward()
 
             if mixed_precision:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
@@ -297,15 +298,15 @@ def train(hyp):
                 ema.update(yolo_model)
 
             # calculate average losses for segmentation pred
-            # segmentation_loss += segmentation_loss.item() * imgs.size(0)
-            # pbar.set_postfix(ordered_dict={"segmentation loss": segmentation_loss.item()})
+            segmentation_loss += segmentation_loss.item() * imgs.size(0)
+            pbar.set_postfix(ordered_dict={"segmentation loss": segmentation_loss.item()})
 
             # Print
             mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
-            # seg_mloss = (seg_mloss * i + segmentation_loss.item()) / (i + 1)  # update mean losses
+            seg_mloss = (seg_mloss * i + segmentation_loss.item()) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_cached() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
-            s = ('%10s' * 2 + '%10.4g' * 6) % (
-                '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1])
+            s = ('%10s' * 2 + '%10.4g' * 7) % (
+                '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1],segmentation_loss)
             pbar.set_description(s)
 
             # Plot
@@ -373,7 +374,7 @@ def train(hyp):
 
             # Save last, best and delete
             # torch.save(unet_model.state_dict(), wdir + f'unet{epoch}.pt')
-            torch.save(unet_model.state_dict(), wdir + f'whole_last{epoch}.pt')
+            # torch.save(unet_model.state_dict(), wdir + f'whole_last{epoch}.pt')
             if (best_fitness == fi) and not final_epoch:
                 torch.save(ckpt, wdir + f'm_best{epoch}.pt')
             del ckpt
