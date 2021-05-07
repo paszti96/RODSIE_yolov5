@@ -4,6 +4,14 @@ import yaml
 
 from models.experimental import *
 
+class MyConv(nn.Module):
+    def __init__(self,in_ch, out_ch, ch ):  # detection layer
+        super(MyConv, self).__init__()
+        self.c = nn.Conv2d(in_ch, out_ch, ch)
+
+    def forward(self,x):
+        return self.c(x)
+
 detect = -12
 class Detect(nn.Module):
     def __init__(self, nc=80, anchors=()):  # detection layer
@@ -51,8 +59,7 @@ class Model(nn.Module):
             self.md = model_cfg  # model dict
         else:  # is *.yaml
             with open(model_cfg) as f:
-                self.md = yaml.load(f, Loader=yaml.FullLoader)  # model dict
-
+                self.md = yaml.load(f, Loader=yaml.FullLoader)  # model dic
         # Define model
         if nc:
             self.md['nc'] = nc  # override yaml value

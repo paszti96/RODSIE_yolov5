@@ -339,7 +339,6 @@ def train(hyp):
                                              imgsz=imgsz_test,
                                              save_json=final_epoch and opt.data.endswith(os.sep + 'coco.yaml'),
                                              model_yolo=ema.ema,
-                                             # seg_model = unet_model,
                                              single_cls=opt.single_cls,
                                              dataloader=testloader,
                                              fast=ni < n_burn)

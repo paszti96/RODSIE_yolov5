@@ -1,8 +1,9 @@
 import argparse
+from models.yolo import Model
 
 from utils.datasets import *
 from utils.utils import *
-from models.segmentation import UNet
+# from models.segmentation import UNet
 
 def detect(save_img=False):
     out, source, weights, segmentation_weights, half, view_img, save_txt, imgsz = \
@@ -17,12 +18,16 @@ def detect(save_img=False):
 
     # Load model
     # google_utils.attempt_download(weights)
-    yolo_model = torch.load(weights, map_location=device)['model']
-    segmentation_model = UNet(n_channels = 4, n_classes = 1).float()
-    segmentation_model.load_state_dict(torch.load(segmentation_weights, map_location=device))
+        #     best_fitness = ckpt['best_fitness']
+
+
+    # yolo_model.load_state_dict(ckpt['model'], strict=False)
+    yolo_model= torch.load(weights, map_location=device)['model']
+    #  segmentation_model = UNet(n_channels = 4, n_classes = 1).float()
+    # yolo_model.load_state_dict(torch.load(weights, map_location=device))
     # torch.save(torch.load(weights, map_location=device), weights)  # update model if SourceChangeWarning
     # model.fuse()
-    segmentation_model.to(device).eval()
+    # segmentation_model.to(device).eval()
     yolo_model.to(device).eval()
 
     # Second-stage classifier
@@ -36,7 +41,7 @@ def detect(save_img=False):
     half = half and device.type != 'cpu'  # half precision only supported on CUDA
     if half:
         yolo_model.half()
-        segmentation_model.half()
+        # segmentation_model.half()
 
     # Set Dataloader
     vid_path, vid_writer = None, None
@@ -65,8 +70,9 @@ def detect(save_img=False):
 
         # Inference
         t1 = torch_utils.time_synchronized()
-        pred = yolo_model(img, augment=opt.augment)[0]
-        seg_pred = segmentation_model(img)
+        pred,seg_pred = yolo_model(img)
+        pred = pred[0]
+        # seg_pred = segmentation_model(img)
         t2 = torch_utils.time_synchronized()
 
         # to float
@@ -82,8 +88,10 @@ def detect(save_img=False):
             pred = apply_classifier(pred, modelc, img, im0s)
 
         # Process detections
+        # mask = (cv2.threshold(np.float32(seg_pred[0][0][:,:,:,0].permute(1,2,0)),opt.conf_thres, 1, cv2.THRESH_BINARY)[1])
         mask = (cv2.threshold(np.float32(seg_pred[0][0]),opt.conf_thres, 1, cv2.THRESH_BINARY)[1])
-
+        m2 = mask.copy() * 255
+        # m2 = cv2.cvtColor(m2, cv2.COLOR_GRAY2RGBA)
         for i, det in enumerate(pred):  # detections per image
             if webcam:  # batch_size >= 1
                 p, s, im0 = path[i], '%g: ' % i, im0s[i].copy()
@@ -92,6 +100,7 @@ def detect(save_img=False):
 
             save_path = str(Path(out) / Path(p).name)
             mask_path= str(Path(out) / Path(p).name.replace('rgb', 'mask'))
+            mask2_path= str(Path(out) / Path(p).name.replace('rgb', 'mask_bb'))
             s += '%gx%g ' % img.shape[2:]  # print string
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  #  normalization gain whwh
             if det is not None and len(det):
@@ -114,6 +123,8 @@ def detect(save_img=False):
                         label = '%s %.2f' % (names[int(cls)], conf)
                         plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=3)
 
+                        # plot_one_box(xyxy, m2, label=label, color=colors[int(cls)], line_thickness=3)
+
             # Print time (inference + NMS)
             print('%sDone. (%.3fs)' % (s, t2 - t1))
 
@@ -130,7 +141,9 @@ def detect(save_img=False):
                     im0 = cv2.cvtColor(im0, cv2.COLOR_RGBA2RGB)
                     cv2.imwrite(save_path, im0)
                     #mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGBA)
-                    cv2.imwrite(mask_path, (mask * 255).astype('uint8'))
+                    cv2.imwrite(mask_path, (mask*255).astype('uint8'))
+
+                    # cv2.imwrite(mask2_path, m2*255)
                 else:
                     if vid_path != save_path:  # new video
                         vid_path = save_path
@@ -153,6 +166,7 @@ def detect(save_img=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--cfg', type=str, default='models/yolov5s.yaml', help='*.cfg path')
     parser.add_argument('--weights_y', type=str, default='weights/yolov5s.pt', help='model.pt path')
     parser.add_argument('--weights_s', type=str, default='weights/unet.pt', help=' segmentation model.pt path')
     parser.add_argument('--source', type=str, default='inference/images', help='source')  # file/folder, 0 for webcam
