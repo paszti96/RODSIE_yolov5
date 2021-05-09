@@ -49,10 +49,12 @@ head:
    [ -1, 3, BottleneckCSP, [ 512, True ] ],
 
    [ -1, 1, nn.Upsample, [ None, 2, 'nearest' ] ],
+   [ [ -1 ], 1, Concat, [ 1 ] ],
    [ -1, 1, Conv, [ 256, 1, 1 ] ],
    [ -1, 3, BottleneckCSP, [ 256, True ] ],
 
    [ -1, 1, nn.Upsample, [ None, 2, 'nearest' ] ],
+   [ [ -1 ], 1, Concat, [ 1 ] ],
    [ -1, 1, Conv, [ 128, 1, 1,1 ] ],
    [ -1, 3, BottleneckCSP, [ 128, True ] ],
 

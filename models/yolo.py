@@ -12,7 +12,7 @@ class MyConv(nn.Module):
     def forward(self,x):
         return self.c(x)
 
-detect = -12
+detect = -14
 class Detect(nn.Module):
     def __init__(self, nc=80, anchors=()):  # detection layer
         super(Detect, self).__init__()

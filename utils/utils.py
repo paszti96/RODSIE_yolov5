@@ -408,8 +408,8 @@ def compute_loss(p, targets, model):  # predictions, targets, model
 
 def build_targets(p, targets, model):
     # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
-    det = model.module.model[-12] if type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel) \
-        else model.model[-12]  # Detect() module
+    det = model.module.model[-14] if type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel) \
+        else model.model[-14]  # Detect() module
     na, nt = det.na, targets.shape[0]  # number of anchors, targets
     tcls, tbox, indices, anch = [], [], [], []
     gain = torch.ones(6, device=targets.device)  # normalized to gridspace gain
