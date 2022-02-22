@@ -15,6 +15,8 @@ The environment consists of two main part:
 A simulated industrial environment that can be used to generate images and metadata for the deep learning algorithm. The simulation should also be modifiable and capable of generating randomized scenarios sufficient to create diverse train dataset. 
 The simulated environment is made with [Unity Engine](https://unity.com/) and it can be found here: [Tartarus](https://github.com/paszti96/Tartarus).
 
+![Tartarus](https://github.com/paszti96/RODSIE_yolov5/blob/main/images/conv_post.PNG "Environment")
+
 ### RODSIE algorithm 🤖📷
 This repository contains the Object Detection Algorithm which contains combinations of a [YOLO v5](https://github.com/ultralytics/yolov5) object detector and a [U-Net](https://en.wikipedia.org/wiki/U-Net)-based segmentation layer.
 
@@ -31,7 +33,20 @@ layers:
 The algorithm has two different output:
 1. Predicted bounding box coordinates and class labels from the YOLO-based object detector.
 2. Predicted segmentation mask, which shows the covered regions of the objects. The final output of the cover detection process is a combined image of these two images, where the found objects with bounding boxes and class labels are shown with white cloud-like regions, where covered parts are predicted by the deep neural network.
+
+For the object detection I use RGBD image from the environment and the ground thruth, and the segmentation is predicted based on a mask that contains the overlapping area of the bounding boxes.
+
+![Input](https://github.com/paszti96/RODSIE_yolov5/blob/main/images/input.png "Input image")
+
+#### The output of the prediction:
+
+![Output](https://github.com/paszti96/RODSIE_yolov5/blob/main/images/output.png "Prediction otput")
+
 ### Performance 📈
 The algorithm tested with different combinations and its performance is shown in the following images:
 
+![MAP](https://github.com/paszti96/RODSIE_yolov5/blob/main/images/map.png)
+![Segmentation loss](https://github.com/paszti96/RODSIE_yolov5/blob/main/images/segmentation%20loss.png)
+
 ### For more details, please check my [Thesis](https://github.com/paszti96/RODSIE_yolov5/blob/main/Robust%20Object%20Detection%20in%20SImulated%20Environment.pdf) ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎
+### And drop a star if you liked it ⭐️⭐️⭐️⭐️⭐️⭐️⭐️
