@@ -1,4 +1,4 @@
-# [Robust Object Detection in Simulated Industrial Environment](https://github.com/paszti96/RODSIE_yolov5/blob/main/Robust%20Object%20Detection%20in%20SImulated%20Environment.pdf)
+# [Robust Object Detection in Simulated Industrial Environment (2021)](https://github.com/paszti96/RODSIE_yolov5/blob/main/Robust%20Object%20Detection%20in%20SImulated%20Environment.pdf)
 
 ## Mission Statement 👨‍🎓
 This research project was my Master's Thesis @ Budapest University of Technology and Economics. 👨🏻‍🎓
