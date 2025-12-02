@@ -48,5 +48,4 @@ The algorithm tested with different combinations and its performance is shown in
 ![MAP](https://github.com/paszti96/RODSIE_yolov5/blob/main/images/map.png)
 ![Segmentation loss](https://github.com/paszti96/RODSIE_yolov5/blob/main/images/segmentation%20loss.png)
 
-### For more details, please check my [Thesis](https://github.com/paszti96/RODSIE_yolov5/blob/main/Robust%20Object%20Detection%20in%20SImulated%20Environment.pdf) ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎
-### And drop a star if you liked it ⭐️⭐️⭐️⭐️⭐️⭐️⭐️
+### For more details, please check my [Thesis](https://github.com/paszti96/RODSIE_yolov5/blob/main/Robust%20Object%20Detection%20in%20SImulated%20Environment.pdf) ❤️ 🧡 
